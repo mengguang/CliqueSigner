@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"log"
-	"github.com/mengguang/newchain/ethclient"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/ethereum/go-ethereum/rlp"
+	"time"
 )
 func sigHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewKeccak256()
@@ -38,26 +39,30 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	blk, err := conn.BlockByNumber(context.Background(),nil)
-	if err != nil {
-		log.Fatal(err)
+	for {
+		blk, err := conn.BlockByNumber(context.Background(),nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println(blk.Number())
+		log.Println(blk.Hash().Hex())
+		log.Printf("%x\n",blk.Extra()[32:])
+		hash := sigHash(blk.Header()).Bytes()
+		//hash := blk.Hash().Bytes()
+		sig := blk.Extra()[32:]
+		pubkey, err := crypto.SigToPub(hash , sig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println(pubkey)
+		publicKey := crypto.FromECDSAPub(pubkey)
+		if err != nil {
+			log.Fatal(err)
+		}
+		valid := crypto.VerifySignature(publicKey,hash,sig[:64])
+		log.Printf("valid: %v\n",valid)
+		log.Println(crypto.PubkeyToAddress(*pubkey).Hex())
+		time.Sleep(time.Second * 3)
 	}
-	log.Println(blk.Number())
-	log.Println(blk.Hash().Hex())
-	log.Printf("%x\n",blk.Extra()[32:])
-	hash := sigHash(blk.Header()).Bytes()
-	//hash := blk.Hash().Bytes()
-	sig := blk.Extra()[32:]
-	pubkey, err := crypto.SigToPub(hash , sig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println(pubkey)
-	publicKey := crypto.FromECDSAPub(pubkey)
-	if err != nil {
-		log.Fatal(err)
-	}
-	valid := crypto.VerifySignature(publicKey,hash,sig[:64])
-	log.Printf("valid: %v\n",valid)
-	log.Println(crypto.PubkeyToAddress(*pubkey).Hex())
+
 }
