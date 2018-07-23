@@ -45,10 +45,19 @@ func main() {
 	log.Println(blk.Number())
 	log.Println(blk.Hash().Hex())
 	log.Printf("%x\n",blk.Extra()[32:])
-	pubkey, err := crypto.SigToPub(sigHash(blk.Header()).Bytes(), blk.Extra()[32:])
+	hash := sigHash(blk.Header()).Bytes()
+	//hash := blk.Hash().Bytes()
+	sig := blk.Extra()[32:]
+	pubkey, err := crypto.SigToPub(hash , sig)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println(pubkey)
+	publicKey := crypto.FromECDSAPub(pubkey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	valid := crypto.VerifySignature(publicKey,hash,sig[:64])
+	log.Printf("valid: %v\n",valid)
 	log.Println(crypto.PubkeyToAddress(*pubkey).Hex())
 }
